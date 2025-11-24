@@ -4,15 +4,10 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
-  release:
-    types:
-      - created
 
 jobs:
   build:
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
     permissions:
       contents: write
     runs-on: ubuntu-latest
@@ -25,11 +20,14 @@ jobs:
       MANIFEST_PATH: "${{ github.workspace }}/external/metamod-source/hl2sdk-manifests"
 
     steps:
+      - name: Generate build number
+        id: buildnumber
+        uses: onyxmueller/build-tag-number@v1
+        with:
+          token: ${{ secrets.github_token }}
+
       - name: Checkout code
         uses: actions/checkout@v3
-
-      - name: Check OS
-        run: cat /etc/os-release
 
       - name: Set up dependencies
         run: |
@@ -51,11 +49,9 @@ jobs:
             https://github.com/alliedmodders/metamod-source.git
           git clone --recursive --branch cs2 --single-branch \
             https://github.com/alliedmodders/hl2sdk.git hl2sdk-cs2
-            
+
           cd ../..
 
-          git clone https://github.com/pisex/SchemaEntity.git
-                  
       - name: Configure and build plugin
         run: |
           mkdir build
@@ -66,11 +62,11 @@ jobs:
       - name: Package addon into ZIP
         run: |
           cd build/package/addons
-          zip -r "${{ github.event.repository.name }}.zip" .
-          mv "${{ github.event.repository.name }}.zip" "${GITHUB_WORKSPACE}/"
+          zip -r "${{ github.event.repository.name }}-v${{ steps.buildnumber.outputs.build_number }}-PattHs.zip" .
+          mv "${{ github.event.repository.name }}-v${{ steps.buildnumber.outputs.build_number }}-PattHs.zip" "${GITHUB_WORKSPACE}/"
 
-      - name: Upload Build Artifact
-        uses: actions/upload-artifact@v3
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
         with:
-          name: ${{ github.event.repository.name }}-build
-          path: ${{ github.workspace }}/${{ github.event.repository.name }}.zip
+          tag_name: v${{ steps.buildnumber.outputs.build_number }}
+          files: ${{ github.workspace }}/${{ github.event.repository.name }}-v${{ steps.buildnumber.outputs.build_number }}-PattHs.zip
