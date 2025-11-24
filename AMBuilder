@@ -28,7 +28,7 @@ for sdk_target in MMSPlugin.sdk_targets:
     ]
 
     binary.sources += [
-        "vip_respawn.cpp",
+        "new_players.cpp",
         os.path.join(builder.sourcePath, "SchemaEntity", "schemasystem.cpp"),
         os.path.join(builder.sourcePath, "SchemaEntity", "module.cpp"),
     ]
