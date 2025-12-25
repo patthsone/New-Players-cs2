@@ -4,12 +4,12 @@ import os
 builder.SetBuildFolder('package')
 
 metamod_folder = builder.AddFolder(os.path.join('addons', 'metamod'))
-bin_folder_path = os.path.join('addons', "vip_modules")
+bin_folder_path = os.path.join('addons', "new_players")
 bin_folder = builder.AddFolder(bin_folder_path)
 
 for cxx in MMSPlugin.all_targets:
   if cxx.target.arch == 'x86_64':
-    bin64_folder_path = os.path.join('addons', "vip_modules")
+    bin64_folder_path = os.path.join('addons', "new_players")
     bin64_folder = builder.AddFolder(bin64_folder_path)
 
 pdb_list = []
