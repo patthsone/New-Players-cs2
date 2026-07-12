@@ -9,6 +9,9 @@
 - SQLMM с MySQL
 - [cs2-discord_core py Pisex](https://github.com/Pisex/cs2-discord_core)
 
+
+![Как выглядит](image.png)
+
 ## Discord
 
 Настройте файл:
