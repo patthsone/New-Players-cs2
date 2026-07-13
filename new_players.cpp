@@ -279,7 +279,7 @@ static void SendDiscordConnectWithAvatar(int slot, uint64 steamId64, const std::
 
     std::string json = "{";
     json += "\"embeds\": [{";
-    json += "\"title\": \"Игрок подключился к серверу\",";
+    json += "\"title\": \"Новый игрок подключился к серверу\",";
     json += "\"description\": \"" + EscapeJson(serverName) + "\",";
     json += "\"url\": \"" + profileUrl + "\",";
     json += "\"color\": " + std::to_string(g_iEmbedColor) + ",";
@@ -318,22 +318,49 @@ static void SendDiscordConnect(int slot, uint64 steamId64)
     });
 }
 
+static void InsertNewPlayer(int slot, uint64 steamId64)
+{
+    char szQuery[1024];
+    g_SMAPI->Format(szQuery, sizeof(szQuery), 
+        "INSERT INTO new_players (steamid, connect) VALUES ('%llu', %lld)", 
+        static_cast<unsigned long long>(steamId64), 
+        static_cast<long long>(std::time(0))
+    );
+    g_pConnection->Query(szQuery, [slot, steamId64](ISQLQuery *pQuery) {
+        META_CONPRINTF("[New_Players] New player %llu inserted to database\n", steamId64);
+        SendDiscordConnect(slot, steamId64);
+    });
+}
+
+static void CheckAndInsertPlayer(int slot, uint64 steamId64)
+{
+    char szQuery[512];
+    g_SMAPI->Format(szQuery, sizeof(szQuery), 
+        "SELECT 1 FROM new_players WHERE steamid = '%llu' LIMIT 1", 
+        static_cast<unsigned long long>(steamId64)
+    );
+    
+    g_pConnection->Query(szQuery, [slot, steamId64](ISQLQuery *pQuery) {
+        auto result = pQuery->GetResultSet();
+        bool exists = (result && result->GetRowCount() > 0);
+        
+        if (!exists) {
+            META_CONPRINTF("[New_Players] Player %llu is new, inserting...\n", steamId64);
+            InsertNewPlayer(slot, steamId64);
+        } else {
+            META_CONPRINTF("[New_Players] Player %llu already exists, skipping\n", steamId64);
+        }
+    });
+}
+
 static void OnClientAuthorized(int iSlot, uint64 iSteamID64)
 {
     if (g_pPlayers && g_pPlayers->IsFakeClient(iSlot)) return;
 
     if (g_pConnection && g_bDBConnected)
     {
-        char szQuery[1024];
-        g_SMAPI->Format(szQuery, sizeof(szQuery), 
-            "INSERT INTO new_players (steamid, connect) VALUES ('%llu', %lld) ON DUPLICATE KEY UPDATE connect = VALUES(connect)", 
-            static_cast<unsigned long long>(iSteamID64), 
-            static_cast<long long>(std::time(0))
-        );
-        g_pConnection->Query(szQuery, [](ISQLQuery *pQuery) {});
+        CheckAndInsertPlayer(iSlot, iSteamID64);
     }
-
-    SendDiscordConnect(iSlot, iSteamID64);
 }
 
 bool New_Players::Load(PluginId id, ISmmAPI* ismm, char* error, size_t maxlen, bool late)
@@ -405,7 +432,7 @@ void New_Players::AllPluginsLoaded()
 }
 
 const char* New_Players::GetLicense() { return "GPL"; }
-const char* New_Players::GetVersion() { return "1.0.1"; }
+const char* New_Players::GetVersion() { return "1.0.2"; }
 const char* New_Players::GetDate() { return __DATE__; }
 const char* New_Players::GetLogTag() { return "New_Players"; }
 const char* New_Players::GetAuthor() { return "Pisex && PattHs"; }
